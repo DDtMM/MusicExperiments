@@ -1,0 +1,12 @@
+.surface-line {
+    stroke: #C97A86;
+    stroke-width: 1;
+    &:nth-child(2n) {
+        stroke: #555;
+        stroke-width: 1;
+    }
+    &:nth-child(2n + 1) {
+        stroke: #444;
+        stroke-width: 1;
+    }
+}

@@ -1,0 +1,31 @@
+.kbd-body {
+    fill: #333;
+    stroke: #000;
+    stroke-width: 1;
+}
+.semitone {
+    fill: #222;
+    stroke: #111;
+    stroke-width: 1;
+    &.hover { // issue with using psuedo class
+        fill: #cc4;
+        stroke: #bb4;
+    }
+    &.down {
+        fill: #555;
+        stroke: #444;
+    }
+}
+.tone {
+    fill: #eee;
+    stroke: #d8d8d8;
+    stroke-width: 1;
+    &.hover { // issue with using psuedo class
+        fill: #ff8;
+        stroke: #dd6;
+    }
+    &.down {
+        fill: #ddd;
+        stroke: #bbb;
+    }
+}
