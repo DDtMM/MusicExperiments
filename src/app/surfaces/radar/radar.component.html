@@ -1,0 +1,67 @@
+<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg" #surfaceElem
+  (mousedown)="mouseDown($event)" (mousemove)="mouseMove($event)"
+  (touchstart)="touchStart($event)" (touchend)="touchEnd($event)" (touchmove)="touchMove($event)"
+  (touchcancel)="touchEnd($event)">
+  <defs>
+    <mask id="mask1" height="1000" width="1000" y="0" x="0">
+      <rect rx="32" height="900" width="900" y="50" x="50" style="stroke:none; fill: #fff" />
+    </mask>
+    <linearGradient id="MyGradient" x1="0" y1="100%" x2="100%" y2="0">
+      <stop offset="5%" stop-color="#020" />
+      <stop offset="95%" stop-color="#040" />
+    </linearGradient>
+    <radialGradient id="box">
+      <stop offset="90%" stop-color="#333" />
+      <stop offset="98%" stop-color="#211" />
+    </radialGradient>
+    <radialGradient id="screen" cx="50%" cy="55%" fx="55%" fy="60%" spreadMethod="reflect">
+      <stop offset="10%" stop-color="#050" />
+      <stop offset="95%" stop-color="#020" />
+    </radialGradient>
+    <filter id="inner-glow">
+      <feFlood flood-color="red" />
+      <feComposite in2="SourceAlpha" operator="out" />
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feComposite operator="atop" in2="SourceGraphic" />
+    </filter>
+    <filter id="inset-shadow">
+
+      <feComponentTransfer in="SourceAlpha" result="inset-selection">
+        <feFuncA type="discrete" tableValues="0 1 1 1 1 1" />
+      </feComponentTransfer>
+
+      <feComponentTransfer in="SourceGraphic" result="original-no-fill">
+        <feFuncA type="discrete" tableValues="0 0 1" />
+      </feComponentTransfer>
+
+      <feColorMatrix type="matrix" in="original-no-fill" result="new-source-alpha" values="0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 0 0
+                0 0 0 1 0" />
+
+      <feGaussianBlur in="new-source-alpha" result="blur" stdDeviation="5" />
+      <feGaussianBlur in="new-source-alpha" result="blur2" stdDeviation="10" />
+      <feGaussianBlur in="new-source-alpha" result="blur3" stdDeviation="15" />
+      <feMerge result="blur">
+        <feMergeNode in="blur" mode="normal" />
+        <feMergeNode in="blur2" mode="normal" />
+        <feMergeNode in="blur3" mode="normal" />
+      </feMerge>
+      <feComposite operator="in" in="inset-selection" in2="blur" result="inset-blur" />
+      <feComposite operator="over" in="original-no-fill" in2="inset-blur" />
+    </filter>
+  </defs>
+  <g>
+    <rect style="fill:url(#box)" height="1000" width="1000" filter="url(#inner-glow)" />
+  </g>
+  <g>
+    <rect height="900" width="900" x="50" y="50" rx="32" ry="32" stroke="#666" stroke-width="4"
+    fill="url(#screen)" fill-opacity="80%"
+      filter="url(#inset-shadow)" />
+    <g style="mask: url(#mask1)">
+
+      <line *ngFor="let s of gridStops" [attr.x1]="s" y1="0" [attr.x2]="s" y2="1000" class="surface-line" />
+      <line *ngFor="let s of gridStops" x1="0" [attr.y1]="s" x2="1000" [attr.y2]="s" class="surface-line" />
+    </g>
+  </g>
+</svg>

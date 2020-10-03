@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { KeyStateChangeEvent } from '../keyboard/keyboard.component';
 import * as Tone from 'tone';
+import { KeyStateChangeEvent } from '../surfaces/keyboard/keyboard.component';
+import { RadarState } from '../surfaces/radar/radar.component';
 
 @Component({
   selector: 'app-instrument-tester',
@@ -8,6 +9,8 @@ import * as Tone from 'tone';
   styleUrls: ['./instrument-tester.component.scss']
 })
 export class InstrumentTesterComponent implements OnInit {
+  readonly oscMap = new Map<number, Tone.Synth>();
+  readonly delay1 = new Tone.PingPongDelay(.5, .5).toDestination();
   polySynth = new Tone.PolySynth({
     options: {
       envelope: {
@@ -18,38 +21,52 @@ export class InstrumentTesterComponent implements OnInit {
       }
     }
   });
-  pan2 = new Tone.Panner(-1);
-  polySynth2 = new Tone.PolySynth({
-    options: {
-      envelope: {
-        attack: .5,
-        sustain: .5,
-        decay: 1,
-        release: 8
-      },
-      oscillator: {
-        type: 'sine11'
-      },
-      volume: -6,
-    }
-  });
+
   constructor() { }
 
   ngOnInit(): void {
     Tone.start();
     this.polySynth.toDestination();
-    this.polySynth2.connect(this.pan2);
-    this.pan2.toDestination();
   }
 
   keysChanged(state: KeyStateChangeEvent) {
-    if (state.pressedKeys.length) {
-      this.polySynth.triggerAttack(state.pressedKeys.map(x => x.frequency));
-      this.polySynth2.triggerAttack(state.pressedKeys.map(x => Tone.Frequency(x.frequency).transpose(12).toFrequency()));
+    if (state.pressed.length) {
+      this.polySynth.triggerAttack(state.pressed.map(x => x.frequency));
     }
-    if (state.releasedKeys.length) {
-      this.polySynth.triggerRelease(state.releasedKeys.map(x => x.frequency));
-      this.polySynth2.triggerRelease(state.releasedKeys.map(x => Tone.Frequency(x.frequency).transpose(12).toFrequency()));
+    if (state.released.length) {
+      this.polySynth.triggerRelease(state.released.map(x => x.frequency));
     }
   }
+
+  radarChange(state: RadarState) {
+    state.released.forEach(x => this.oscMap.get(x).triggerRelease());
+    state.down.forEach(x => {
+      this.oscMap.get(x.id).triggerAttack(x.frequency);
+      this.oscMap.get(x.id).volume.rampTo(x.volume, .001);
+    });
+    state.pressed.forEach(x => {
+      let osc = this.oscMap.get(x.id);
+      if (!osc) {
+        osc = new Tone.Synth({
+          oscillator : {
+            type: 'sawtooth32'
+          } ,
+          envelope: {
+            attack: 0.005 ,
+            decay : 0.1 ,
+            sustain : 1 ,
+            release : 0
+          },
+          portamento: .1
+        });
+        osc.volume.value = x.volume;
+        osc.toDestination();
+        osc.connect(this.delay1);
+        this.oscMap.set(x.id, osc);
+      }
+      osc.triggerAttack(x.frequency);
+    });
+  }
+
+
 }

@@ -11,7 +11,7 @@
   <ng-template #keyTmplt let-k>
     <rect [attr.x]="k.rect.x" [attr.y]="k.rect.y" [attr.height]="k.rect.height" [attr.width]="k.rect.width"
       (mousedown)="mouseDown(k)" (mouseup)="mouseUp(k)" (mouseover)="mouseOver(k)" (mouseout)="mouseOut(k)"
-      (touchstart)="touchDown(k)" (touchend)="touchUp(k)" (touchCancel)="touchUp(k)"
+      (touchstart)="touchStart(k)" (touchend)="touchEnd(k)" (touchcancel)="touchEnd(k)"
       (contextmenu)="$event?.preventDefault()"
       [ngClass]="{'down': isDown(k), 'hover': mouseHoverKey === k && !isDown(k), 'semitone': k.isSemitone, 'tone': !k.isSemitone }" />
   </ng-template>

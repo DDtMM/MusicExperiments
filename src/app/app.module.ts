@@ -5,8 +5,9 @@ import { AppComponent } from './app.component';
 import { ControlSurfaceComponent } from './control-surface/control-surface.component';
 import { FormsModule } from '@angular/forms';
 import { Song1Component } from './song1/song1.component';
-import { KeyboardComponent } from './keyboard/keyboard.component';
+import { KeyboardComponent } from './surfaces/keyboard/keyboard.component';
 import { InstrumentTesterComponent } from './instrument-tester/instrument-tester.component';
+import { RadarComponent } from './surfaces/radar/radar.component';
 
 @NgModule({
   declarations: [
@@ -14,7 +15,8 @@ import { InstrumentTesterComponent } from './instrument-tester/instrument-tester
     ControlSurfaceComponent,
     Song1Component,
     KeyboardComponent,
-    InstrumentTesterComponent
+    InstrumentTesterComponent,
+    RadarComponent
   ],
   imports: [
     BrowserModule,

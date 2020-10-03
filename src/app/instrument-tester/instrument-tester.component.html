@@ -1,1 +1,4 @@
-<app-keyboard (keyStateChange)="keysChanged($event)" [octaves]="2" [startingOctaveIndex]="1"></app-keyboard>
+<!-- <app-keyboard (keyStateChange)="keysChanged($event)" [octaves]="2" [startingOctaveIndex]="1"></app-keyboard> -->
+<div style="max-width: calc(100vh - 5px); max-height: 100vh; margin: 0 auto">
+  <app-radar (stateChange)="radarChange($event)"></app-radar>
+</div>

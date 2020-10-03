@@ -31,11 +31,11 @@ interface PianoKeyEvent {
 }
 export interface KeyStateChangeEvent {
   /** keys that were previously pressed and are still down. */
-  downKeys: PianoKey[];
+  down: PianoKey[];
   /** Keys that were pressed during this change. */
-  pressedKeys: PianoKey[];
+  pressed: PianoKey[];
   /** keys that got released during this change. */
-  releasedKeys: PianoKey[];
+  released: PianoKey[];
 }
 const octaveTemplate = [
   { isSemitone: false, note: 'A' },
@@ -102,24 +102,24 @@ export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
       bufferTime(1),
       filter(x => !!x.length),
       map(keyEvents => {
-        const stateEvent: KeyStateChangeEvent = { downKeys: [], pressedKeys: [], releasedKeys: [] };
+        const stateEvent: KeyStateChangeEvent = { down: [], pressed: [], released: [] };
         const lastKeyEvents = keyEvents
           .reduceRight((acc, evt) => acc.every(x => x.key !== evt.key) ? acc.concat([evt]) : acc, [] as PianoKeyEvent[]);
 
-        stateEvent.releasedKeys = lastKeyEvents.filter(x => x.eventType === 'release').map(x => x.key);
-        stateEvent.pressedKeys = lastKeyEvents.filter(x => x.eventType === 'press').map(x => x.key);
-        stateEvent.downKeys = this.downKeys.slice();
+        stateEvent.released = lastKeyEvents.filter(x => x.eventType === 'release').map(x => x.key);
+        stateEvent.pressed = lastKeyEvents.filter(x => x.eventType === 'press').map(x => x.key);
+        stateEvent.down = this.downKeys.slice();
 
         return stateEvent;
       }),
-      startWith({ downKeys: [], pressedKeys: [], releasedKeys: [] } as KeyStateChangeEvent),
+      startWith({ down: [], pressed: [], released: [] } as KeyStateChangeEvent),
       pairwise(),
-      filter(([a, b]) => a.downKeys.length !== b.downKeys.length
-          || a.pressedKeys.length !== b.pressedKeys.length
-          || a.releasedKeys.length !== b.releasedKeys.length
-          || a.downKeys.some(x => !b.downKeys.includes(x))
-          || a.pressedKeys.some(x => !b.pressedKeys.includes(x))
-          || a.releasedKeys.some(x => !b.releasedKeys.includes(x))
+      filter(([a, b]) => a.down.length !== b.down.length
+          || a.pressed.length !== b.pressed.length
+          || a.released.length !== b.released.length
+          || a.down.some(x => !b.down.includes(x))
+          || a.pressed.some(x => !b.pressed.includes(x))
+          || a.released.some(x => !b.released.includes(x))
       ),
       tap(([_, b]) => this.keyStateChange.emit(b))
     ).subscribe();
@@ -156,13 +156,13 @@ export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
     this.isMouseDown = false;
     this.keyEventSubject.next({ eventType: 'release', key });
   }
-  touchDown(key: PositionedPianoKey) {
+  touchStart(key: PositionedPianoKey) {
     if (this.mouseHoverKey == key) {
       this.mouseHoverKey = undefined;
     }
     this.keyEventSubject.next({ eventType: 'press', key });
   }
-  touchUp(key: PositionedPianoKey) {
+  touchEnd(key: PositionedPianoKey) {
     this.keyEventSubject.next({ eventType: 'release', key });
   }
 
