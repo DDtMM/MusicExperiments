@@ -1,6 +1,8 @@
-<svg viewBox="0 0 1000 200" xmlns="http://www.w3.org/2000/svg">
-  <g>
-    <rect x="0" y="0" rx="5" ry="5" width="1000" height="200" class="kbd-body" />
+<svg  viewBox="0 0 1000 200" xmlns="http://www.w3.org/2000/svg"
+  style="max-width: 100%; max-height: 100%;">
+  <g (touchmove)="touchUpdate($event)" (touchstart)="touchUpdate($event)" (touchend)="touchUpdate($event)" (touchcancel)="touchUpdate($event)">
+    <rect x="0" y="0" rx="5" ry="5" width="1000" height="200" class="kbd-body" #surfaceElem
+     />
     <ng-container *ngFor="let k of keyTones">
       <ng-container *ngTemplateOutlet="keyTmplt; context: { $implicit: k }"></ng-container>
     </ng-container>
@@ -10,9 +12,8 @@
   </g>
   <ng-template #keyTmplt let-k>
     <rect [attr.x]="k.rect.x" [attr.y]="k.rect.y" [attr.height]="k.rect.height" [attr.width]="k.rect.width"
-      (mousedown)="mouseDown(k)" (mouseup)="mouseUp(k)" (mouseover)="mouseOver(k)" (mouseout)="mouseOut(k)"
-      (touchstart)="touchStart(k)" (touchend)="touchEnd(k)" (touchcancel)="touchEnd(k)"
-      (contextmenu)="$event?.preventDefault()"
-      [ngClass]="{'down': isDown(k), 'hover': mouseHoverKey === k && !isDown(k), 'semitone': k.isSemitone, 'tone': !k.isSemitone }" />
+      (contextmenu)="cancelEvent($event)"
+      (mousedown)="mouseDown(k)" (mouseup)="mouseUp(k)" (mouseover)="mouseOver(k, $event)" (mouseout)="mouseOut(k)"
+      [ngClass]="{'down': isDown(k), 'semitone': k.isSemitone, 'tone': !k.isSemitone }" />
   </ng-template>
 </svg>

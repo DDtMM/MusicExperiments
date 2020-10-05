@@ -8,6 +8,7 @@ import { Song1Component } from './song1/song1.component';
 import { KeyboardComponent } from './surfaces/keyboard/keyboard.component';
 import { InstrumentTesterComponent } from './instrument-tester/instrument-tester.component';
 import { RadarComponent } from './surfaces/radar/radar.component';
+import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 
 @NgModule({
   declarations: [
@@ -20,7 +21,8 @@ import { RadarComponent } from './surfaces/radar/radar.component';
   ],
   imports: [
     BrowserModule,
-    FormsModule
+    FormsModule,
+    NgbModule
   ],
   providers: [],
   bootstrap: [AppComponent]

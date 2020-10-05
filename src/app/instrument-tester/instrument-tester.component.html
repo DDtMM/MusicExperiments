@@ -1,4 +1,19 @@
-<!-- <app-keyboard (keyStateChange)="keysChanged($event)" [octaves]="2" [startingOctaveIndex]="1"></app-keyboard> -->
-<div style="max-width: calc(100vh - 5px); max-height: 100vh; margin: 0 auto">
-  <app-radar (stateChange)="radarChange($event)"></app-radar>
+<div class="d-flex flex-column" style="position: relative; max-height: 100vh; height: 100vh; min-height: 100vh;">
+  <ul ngbNav #nav="ngbNav" class="flex-shrink-1 nav-tabs">
+    <li ngbNavItem>
+      <a ngbNavLink>Piano</a>
+      <ng-template ngbNavContent>
+        <app-keyboard (keyStateChange)="keysChanged($event)" [octaves]="4" [startingOctaveIndex]="1"></app-keyboard>
+      </ng-template>
+    </li>
+    <li ngbNavItem>
+      <a ngbNavLink>Radar</a>
+      <ng-template ngbNavContent>
+        <app-radar (stateChange)="radarChange($event)"></app-radar>
+      </ng-template>
+    </li>
+  </ul>
+  <div [ngbNavOutlet]="nav" class="flex-grow-1" style="height: calc(100vh - 50px)">
+
+  </div>
 </div>

@@ -1,8 +1,10 @@
-import { KeyedRead } from '@angular/compiler';
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges } from '@angular/core';
-import { range, sortBy, startsWith } from 'ramda';
-import { defer, interval, Subject, timer, zip } from 'rxjs';
-import { bufferTime, bufferWhen, filter, map, pairwise, startWith, take, takeUntil, tap, toArray } from 'rxjs/operators';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
+import { range } from 'ramda';
+import { Subject } from 'rxjs';
+import { bufferTime, filter, map, takeUntil, tap } from 'rxjs/operators';
+import { cancelEvent } from '../common';
+import { getRelativeLocation, getRelativeLocationPercent, isPointInRect, Point2d, Rect } from '../geometry';
+import { getFirstAvailableTriggerId, isTriggerDownOrPressed, TriggerDownState, TriggerReleasedState, TriggerState, TriggerStateType } from '../trigger-state';
 
 interface TemplateKey {
   isSemitone: boolean;
@@ -14,29 +16,15 @@ interface PianoKey extends TemplateKey {
   noteIndex: number;
 }
 
-interface Rect {
-  height: number;
-  width: number;
-  x: number;
-  y: number;
-}
-
 interface PositionedPianoKey extends PianoKey {
   rect: Rect;
 }
 
 interface PianoKeyEvent {
-  eventType: 'press' | 'release',
-  key: PositionedPianoKey
+  eventType: 'pressed' | 'released';
+  key: PositionedPianoKey;
 }
-export interface KeyStateChangeEvent {
-  /** keys that were previously pressed and are still down. */
-  down: PianoKey[];
-  /** Keys that were pressed during this change. */
-  pressed: PianoKey[];
-  /** keys that got released during this change. */
-  released: PianoKey[];
-}
+
 const octaveTemplate = [
   { isSemitone: false, note: 'A' },
   { isSemitone: true, note: 'A#' },
@@ -67,17 +55,15 @@ const keyAreaOffsetY = kbdHeight - keyAreaHeight;
 })
 export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
   private readonly destroyedSubject = new Subject();
-  /** Keys that are currently down. */
-  downKeys: PositionedPianoKey[] = [];
+  /** Keys currently down, keyed by noteIndex */
+  downKeys: Map<number, TriggerDownState> = new Map();
   private isMouseDown = false;
   private readonly keyEventSubject = new Subject<PianoKeyEvent>();
 
-
-  /** Key that is currently hovered by mouse.  The css :hover was acting iffy with touch. */
-  mouseHoverKey?: PositionedPianoKey;
+  readonly cancelEvent = cancelEvent;
 
   @Output()
-  keyStateChange = new EventEmitter<KeyStateChangeEvent>();
+  keyStateChange = new EventEmitter<TriggerState[]>();
 
   /** All possible keys. */
   keys: PositionedPianoKey[] = [];
@@ -92,37 +78,47 @@ export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
   @Input()
   startingOctaveIndex = 0;
 
+  @ViewChild('surfaceElem')
+  surfaceElem: ElementRef;
+
   constructor() { }
 
   ngOnInit() {
     this.initKeys();
     this.keyEventSubject.pipe(
+
       takeUntil(this.destroyedSubject),
-      filter(x => x.eventType === 'press' ? this.addDownKey(x.key) : this.removeDownKey(x.key)),
       bufferTime(1),
       filter(x => !!x.length),
-      map(keyEvents => {
-        const stateEvent: KeyStateChangeEvent = { down: [], pressed: [], released: [] };
-        const lastKeyEvents = keyEvents
-          .reduceRight((acc, evt) => acc.every(x => x.key !== evt.key) ? acc.concat([evt]) : acc, [] as PianoKeyEvent[]);
-
-        stateEvent.released = lastKeyEvents.filter(x => x.eventType === 'release').map(x => x.key);
-        stateEvent.pressed = lastKeyEvents.filter(x => x.eventType === 'press').map(x => x.key);
-        stateEvent.down = this.downKeys.slice();
-
-        return stateEvent;
-      }),
-      startWith({ down: [], pressed: [], released: [] } as KeyStateChangeEvent),
-      pairwise(),
-      filter(([a, b]) => a.down.length !== b.down.length
-          || a.pressed.length !== b.pressed.length
-          || a.released.length !== b.released.length
-          || a.down.some(x => !b.down.includes(x))
-          || a.pressed.some(x => !b.pressed.includes(x))
-          || a.released.some(x => !b.released.includes(x))
-      ),
-      tap(([_, b]) => this.keyStateChange.emit(b))
+      tap(events => {
+        // store updated states, starting with current down states.
+        const accumulatedStates = new Map<number, TriggerState>(
+          Array.from(this.downKeys.entries())
+            .map(([noteId, trigger]) => [noteId, trigger.stateType === 'pressed' ? { ...trigger, stateType: 'down' } : trigger])
+        );
+        // add new states from events.  If an existing state is updated it will replace what is in accumulatedStates.
+        events.forEach(({ eventType, key }) => {
+          const priorState = this.downKeys.get(key.noteIndex);
+          if (eventType === 'pressed' && !priorState) {
+            const triggerId = getFirstAvailableTriggerId(Array.from(accumulatedStates.values()));
+            accumulatedStates.set(key.noteIndex,
+              { id: triggerId, frequency: key.frequency, velocity: 1, stateType: 'pressed' } as TriggerDownState);
+          }
+          else if (eventType === 'released' && priorState) {
+            accumulatedStates.set(key.noteIndex,
+              { id: priorState.id, frequency: key.frequency, stateType: 'released' } as TriggerReleasedState);
+          }
+        });
+        const updatedState = Array.from(accumulatedStates.values());
+        this.downKeys = new Map(
+          Array.from(accumulatedStates.entries())
+            .filter(([_, trigger]) => isTriggerDownOrPressed(trigger)) as [number, TriggerDownState][]
+        );
+        this.keyStateChange.emit(updatedState);
+      })
     ).subscribe();
+
+
   }
 
   ngOnChanges() {
@@ -134,56 +130,69 @@ export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
   }
 
   isDown(key: PositionedPianoKey) {
-    return this.downKeys.includes(key);
+    return this.downKeys.has(key.noteIndex);
   }
   mouseDown(key: PositionedPianoKey) {
     this.isMouseDown = true;
-    this.keyEventSubject.next({ eventType: 'press', key });
+    this.keyEventSubject.next({ eventType: 'pressed', key });
   }
   mouseOver(key: PositionedPianoKey) {
-    this.mouseHoverKey = key;
     if (this.isMouseDown) {
-      this.keyEventSubject.next({ eventType: 'press', key });
+      this.keyEventSubject.next({ eventType: 'pressed', key });
     }
   }
   mouseOut(key: PositionedPianoKey) {
-    if (this.mouseHoverKey === key) {
-      this.mouseHoverKey = undefined;
-    }
-    this.keyEventSubject.next({ eventType: 'release', key });
+    this.keyEventSubject.next({ eventType: 'released', key });
   }
+
   mouseUp(key: PositionedPianoKey) {
     this.isMouseDown = false;
-    this.keyEventSubject.next({ eventType: 'release', key });
-  }
-  touchStart(key: PositionedPianoKey) {
-    if (this.mouseHoverKey == key) {
-      this.mouseHoverKey = undefined;
-    }
-    this.keyEventSubject.next({ eventType: 'press', key });
-  }
-  touchEnd(key: PositionedPianoKey) {
-    this.keyEventSubject.next({ eventType: 'release', key });
+    this.keyEventSubject.next({ eventType: 'released', key });
   }
 
-  /** Adds a downKey to downKeys if it isn't already there.  Returns true if added. */
-  private addDownKey(key: PositionedPianoKey) {
-    if (!this.downKeys.includes(key)) {
-      this.downKeys.push(key);
-      this.downKeys = this.downKeys.sort((a, b) => a.noteIndex - b.noteIndex);
-      return true;
-    }
-    return false;
+  touchUpdate(event: TouchEvent) {
+    cancelEvent(event);
+    const surfaceRect = this.getSurfaceRect();
+    const touchedKeys = Array.from(event.touches)
+      .map(x => this.getKeyFromClientLocation([x.clientX, x.clientY], surfaceRect))
+      .filter(x => !!x);
+
+    // removed not touched keys.
+    const toRelease = Array.from(this.downKeys)
+      .filter(([noteIndex]) => !touchedKeys.find(x => x.noteIndex === noteIndex))
+      .map(([noteIndex]) => this.keys.find(x => x.noteIndex === noteIndex))
+      .filter(x => !!x);
+
+    // add newly pressed keys.
+    const toTouch = touchedKeys
+      .filter(key => !this.downKeys.has(key.noteIndex));
+
+    toRelease.forEach(key => this.keyEventSubject.next({ eventType: 'released', key }));
+    toTouch.forEach(key => this.keyEventSubject.next({ eventType: 'pressed', key }));
   }
 
-  /** Clears down keys by issuing release event for each. */
+  /** Clears down keys and emits updated state. */
   private clearDownKeys() {
-    this.downKeys.forEach(key => this.keyEventSubject.next({ eventType: 'release', key }));
+    if (this.downKeys.size > 0) {
+      const newState = Array.from(this.downKeys.values())
+        .map(x => ({ id: x.id, frequency: x.id, stateType: 'released' }) as TriggerReleasedState);
+      this.downKeys.clear();
+      this.keyStateChange.next(newState);
+    }
   }
 
+  /** gets the keys at a point; */
+  private getKeyFromClientLocation(clientLoc: Point2d, boundary: Rect): PositionedPianoKey | undefined {
+    const ptPct = getRelativeLocationPercent(clientLoc, boundary);
+    const pt = [ptPct[0] * kbdWidth, ptPct[1] * kbdHeight] as Point2d;
+    return this.keys.find(x => isPointInRect(pt, x.rect));
+  }
+
+  private getSurfaceRect() {
+    return (this.surfaceElem.nativeElement as HTMLElement).getBoundingClientRect();
+  }
   private initKeys() {
     this.clearDownKeys();
-
     const toneWidth = keyAreaWidth / (3 + this.octaves * 7); // 7 is the number of tone keys per octave.
     const semitoneWidth = toneWidth * (2 / 3);
     const semitoneHeight = keyAreaHeight * (2 / 3);
@@ -201,27 +210,16 @@ export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
 
     function createKey(noteIndex: number) {
       return {
-        ... octaveTemplate[noteIndex % 12],
+        ...octaveTemplate[noteIndex % 12],
         frequency: 55 * Math.pow(2, noteIndex / 12),
         noteIndex,
       } as PianoKey;
     }
-    function getKeyDimensions(key: PianoKey, posIndex: number): Rect {
-      const xOffset =  posIndex * toneWidth + keyAreaOffsetX;
+    function getKeyDimensions(key: PianoKey, keyPosIndex: number): Rect {
+      const xOffset = keyPosIndex * toneWidth + keyAreaOffsetX;
       return key.isSemitone
         ? { height: semitoneHeight, width: semitoneWidth, x: xOffset + semitoneXOffset, y: keyAreaOffsetY }
         : { height: keyAreaHeight, width: toneWidth, x: xOffset, y: keyAreaOffsetY };
     }
-  }
-
-  /** removes down key from downKeys if it exists.  Returns true if operation occurs. */
-  private removeDownKey(key: PositionedPianoKey) {
-    let index = 0; // initialize with starting position.
-    let isRemoved = false;
-    while ((index = this.downKeys.indexOf(key, index)) !== -1) {
-      this.downKeys.splice(index, 1);
-      isRemoved = true;
-    }
-    return isRemoved;
   }
 }

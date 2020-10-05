@@ -1,7 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import * as Tone from 'tone';
-import { KeyStateChangeEvent } from '../surfaces/keyboard/keyboard.component';
-import { RadarState } from '../surfaces/radar/radar.component';
+import { isTriggerDown, isTriggerPressed, isTriggerReleased, TriggerDownState, TriggerState } from '../surfaces/trigger-state';
 
 @Component({
   selector: 'app-instrument-tester',
@@ -12,6 +11,7 @@ export class InstrumentTesterComponent implements OnInit {
   readonly oscMap = new Map<number, Tone.Synth>();
   readonly delay1 = new Tone.PingPongDelay(.5, .5).toDestination();
   polySynth = new Tone.PolySynth({
+    voice: Tone.Synth,
     options: {
       envelope: {
         attack: .2,
@@ -29,27 +29,29 @@ export class InstrumentTesterComponent implements OnInit {
     this.polySynth.toDestination();
   }
 
-  keysChanged(state: KeyStateChangeEvent) {
-    if (state.pressed.length) {
-      this.polySynth.triggerAttack(state.pressed.map(x => x.frequency));
+  keysChanged(state: TriggerState[]) {
+    const pressed = state.filter(isTriggerPressed);
+    const released = state.filter(isTriggerReleased);
+    if (pressed.length) {
+      this.polySynth.triggerAttack(pressed.map(x => x.frequency));
     }
-    if (state.released.length) {
-      this.polySynth.triggerRelease(state.released.map(x => x.frequency));
+    if (released.length) {
+      this.polySynth.triggerRelease(released.map(x => x.frequency));
     }
   }
 
-  radarChange(state: RadarState) {
-    state.released.forEach(x => this.oscMap.get(x).triggerRelease());
-    state.down.forEach(x => {
+  radarChange(state: TriggerState[]) {
+    state.filter(isTriggerReleased).forEach(x => this.oscMap.get(x.id).triggerRelease());
+    state.filter(isTriggerDown).forEach(x => {
       this.oscMap.get(x.id).triggerAttack(x.frequency);
-      this.oscMap.get(x.id).volume.rampTo(x.volume, .001);
+      this.oscMap.get(x.id).volume.rampTo(this.velocityToVolume(x.velocity), .001);
     });
-    state.pressed.forEach(x => {
+    state.filter(isTriggerPressed).forEach(x => {
       let osc = this.oscMap.get(x.id);
       if (!osc) {
         osc = new Tone.Synth({
           oscillator : {
-            type: 'sawtooth32'
+            type: 'sine4'
           } ,
           envelope: {
             attack: 0.005 ,
@@ -59,13 +61,24 @@ export class InstrumentTesterComponent implements OnInit {
           },
           portamento: .1
         });
-        osc.volume.value = x.volume;
+        osc.volume.value = this.velocityToVolume(x.velocity);
         osc.toDestination();
         osc.connect(this.delay1);
         this.oscMap.set(x.id, osc);
       }
       osc.triggerAttack(x.frequency);
     });
+  }
+
+
+
+  /** Converts pressure % to decibles. */
+  private velocityToVolume(pressure: number) {
+    const volume = Math.log10(pressure) * 10;
+    if (isNaN(volume)) {
+      console.log(['nan volume', volume, pressure]);
+    }
+    return volume;
   }
 
 
