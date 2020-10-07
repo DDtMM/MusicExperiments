@@ -61,11 +61,11 @@ export class InstrumentTesterComponent implements OnInit {
           },
           portamento: .1
         });
-        osc.volume.value = this.velocityToVolume(x.velocity);
         osc.toDestination();
         osc.connect(this.delay1);
         this.oscMap.set(x.id, osc);
       }
+      osc.volume.value = this.velocityToVolume(x.velocity);
       osc.triggerAttack(x.frequency);
     });
   }

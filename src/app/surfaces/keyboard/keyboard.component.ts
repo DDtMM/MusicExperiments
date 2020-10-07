@@ -1,10 +1,10 @@
 import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, ViewChild } from '@angular/core';
 import { range } from 'ramda';
 import { Subject } from 'rxjs';
-import { bufferTime, filter, map, takeUntil, tap } from 'rxjs/operators';
+import { bufferTime, filter, takeUntil, tap } from 'rxjs/operators';
 import { cancelEvent } from '../common';
-import { getRelativeLocation, getRelativeLocationPercent, isPointInRect, Point2d, Rect } from '../geometry';
-import { getFirstAvailableTriggerId, isTriggerDownOrPressed, TriggerDownState, TriggerReleasedState, TriggerState, TriggerStateType } from '../trigger-state';
+import { getNormalizedPosition, isPointInRect, Point2d, Rect } from '../geometry';
+import { getFirstAvailableTriggerId, isTriggerDownOrPressed, TriggerDownState, TriggerReleasedState, TriggerState } from '../trigger-state';
 
 interface TemplateKey {
   isSemitone: boolean;
@@ -183,7 +183,7 @@ export class KeyboardComponent implements OnInit, OnChanges, OnDestroy {
 
   /** gets the keys at a point; */
   private getKeyFromClientLocation(clientLoc: Point2d, boundary: Rect): PositionedPianoKey | undefined {
-    const ptPct = getRelativeLocationPercent(clientLoc, boundary);
+    const ptPct = getNormalizedPosition(clientLoc, boundary);
     const pt = [ptPct[0] * kbdWidth, ptPct[1] * kbdHeight] as Point2d;
     return this.keys.find(x => isPointInRect(pt, x.rect));
   }

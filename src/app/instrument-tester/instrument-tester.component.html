@@ -1,15 +1,15 @@
 <div class="d-flex flex-column" style="position: relative; max-height: 100vh; height: 100vh; min-height: 100vh;">
   <ul ngbNav #nav="ngbNav" class="flex-shrink-1 nav-tabs">
     <li ngbNavItem>
-      <a ngbNavLink>Piano</a>
-      <ng-template ngbNavContent>
-        <app-keyboard (keyStateChange)="keysChanged($event)" [octaves]="4" [startingOctaveIndex]="1"></app-keyboard>
-      </ng-template>
-    </li>
-    <li ngbNavItem>
       <a ngbNavLink>Radar</a>
       <ng-template ngbNavContent>
         <app-radar (stateChange)="radarChange($event)"></app-radar>
+      </ng-template>
+    </li>
+    <li ngbNavItem>
+      <a ngbNavLink>Piano</a>
+      <ng-template ngbNavContent>
+        <app-keyboard (keyStateChange)="keysChanged($event)" [octaves]="4" [startingOctaveIndex]="1"></app-keyboard>
       </ng-template>
     </li>
   </ul>

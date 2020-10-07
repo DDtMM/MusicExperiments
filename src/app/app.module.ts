@@ -9,6 +9,7 @@ import { KeyboardComponent } from './surfaces/keyboard/keyboard.component';
 import { InstrumentTesterComponent } from './instrument-tester/instrument-tester.component';
 import { RadarComponent } from './surfaces/radar/radar.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
+import { KnobDirective } from './surfaces/knob.directive';
 
 @NgModule({
   declarations: [
@@ -17,7 +18,8 @@ import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
     Song1Component,
     KeyboardComponent,
     InstrumentTesterComponent,
-    RadarComponent
+    RadarComponent,
+    KnobDirective
   ],
   imports: [
     BrowserModule,

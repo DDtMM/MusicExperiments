@@ -3,7 +3,7 @@ import { range } from 'ramda';
 import { Subject } from 'rxjs';
 import { bufferTime, filter, takeUntil, tap } from 'rxjs/operators';
 import { cancelEvent } from '../common';
-import { getRelativeLocationPercent, isPointInRect, Point2d, Rect } from '../geometry';
+import { getNormalizedPosition, isPointInRect, Point2d, Rect } from '../geometry';
 import { TriggerState } from '../trigger-state';
 
 interface InternalTouchState {
@@ -15,7 +15,7 @@ interface InternalTouchState {
 
 @Component({
   selector: 'app-radar',
-  templateUrl: './radar.component.html',
+  templateUrl: './radar.component.svg',
   styleUrls: ['./radar.component.scss']
 })
 export class RadarComponent implements OnInit, OnDestroy {
@@ -130,7 +130,7 @@ export class RadarComponent implements OnInit, OnDestroy {
       boundary = this.getSurfaceRect();
     }
     if (isPointInRect(clientLoc, boundary)) {
-      this.touchEventSubject.next({ id, pos: getRelativeLocationPercent(clientLoc, boundary) });
+      this.touchEventSubject.next({ id, pos: getNormalizedPosition(clientLoc, boundary) });
     }
     else {
       this.touchEventSubject.next({ id });
