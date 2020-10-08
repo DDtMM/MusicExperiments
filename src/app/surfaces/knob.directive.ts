@@ -1,5 +1,10 @@
+import { AfterViewInit, OnDestroy } from '@angular/core';
 import { Directive, ElementRef, EventEmitter, HostBinding, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Subject } from 'rxjs';
+import { filter, map, takeUntil, tap } from 'rxjs/operators';
 import { getAngle, getNormalizedAngle, getNormalizedPosition, Point2d } from './geometry';
+import { PressEventsElementListener } from './press-events/models';
+import { PressEventsService } from './press-events/press-events.service';
 
 
 export interface KnobDirectiveOptions {
@@ -22,14 +27,14 @@ export interface KnobDirectiveOptions {
 @Directive({
   selector: '[appKnob]'
 })
-export class KnobDirective implements OnChanges {
+export class KnobDirective implements AfterViewInit, OnChanges, OnDestroy {
   private currentAngle = 0;
-  private isMouseDown = false;
-  private isTouchActive = false;
+  private destroyedSubject = new Subject();
   private maxAngle = Math.PI * .99999;
   private maxValue = 1;
   private minAngle = Math.PI * -.99999;
   private minValue = 0;
+  private pressEventsListener?: PressEventsElementListener;
 
   @Input('appKnob')
   options?: KnobDirectiveOptions;
@@ -39,45 +44,22 @@ export class KnobDirective implements OnChanges {
 
   readonly valueChange = new EventEmitter<number>();
 
-  @HostListener('mousedown', ['$event'])
-  mouseDown(event: MouseEvent) {
-    this.isMouseDown = true;
-    this.updateClientTouch([event.clientX, event.clientY]);
-  }
-
-  @HostListener('window:mousemove', ['$event'])
-  mouseMove(evt: MouseEvent) {
-    if (this.isMouseDown) {
-      this.updateClientTouch([evt.clientX, evt.clientY]);
-    }
-  }
-  @HostListener('window:mouseup')
-  mouseUp() {
-    this.isMouseDown = false;
-  }
-
-  @HostListener('touchstart', ['$event'])
-  touchStart(evt: TouchEvent) {
-    this.isTouchActive = true;
-    this.updateClientTouch([evt.changedTouches[0].clientX, evt.changedTouches[0].clientY]);
-  }
-
-  @HostListener('touchmove', ['$event'])
-  touchMove(evt: TouchEvent) {
-    if (this.isTouchActive) {
-      this.updateClientTouch([evt.changedTouches[0].clientX, evt.changedTouches[0].clientY]);
-    }
-  }
-  @HostListener('touchend')
-  @HostListener('touchcancel')
-  touchEnd() {
-    this.isTouchActive = false;
-  }
-
-  constructor(private el: ElementRef) {
+  constructor(private el: ElementRef, private pressEventsSvc: PressEventsService) {
 
   }
 
+  ngAfterViewInit() {
+    this.pressEventsListener = this.pressEventsSvc.createEventsListener(this.el, 'all');
+    this.pressEventsListener.pressEventsChange$.pipe(
+      takeUntil(this.destroyedSubject),
+      map(x => x.changes.find(y => y.type !== 'release') || x.states[0]),
+      filter(x => !!x),
+      tap(x => {
+        const angle = this.constrainAngle(this.pointToAngle([x.clientX, x.clientY]));
+        this.setCurrentAngle(angle);
+      })
+    ).subscribe();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes.options.currentValue) {
@@ -85,7 +67,13 @@ export class KnobDirective implements OnChanges {
     }
   }
 
-  private onAngleChange(angle: number) {
+  ngOnDestroy() {
+    this.pressEventsListener.destroy();
+    this.destroyedSubject.next();
+  }
+
+  /** Constrains an angle within the valid range of maxAngle and minAngle. */
+  private constrainAngle(angle: number) {
     let angleInRange = false;
     angle = getNormalizedAngle(angle);
     if (angle > this.maxAngle) {
@@ -105,7 +93,7 @@ export class KnobDirective implements OnChanges {
       angle = (absMinDiff < absMaxDiff) ? this.minAngle : this.maxAngle;
     }
 
-    this.setCurrentAngle(angle);
+    return angle;
   }
 
   private onOptionsChange() {
@@ -150,6 +138,8 @@ export class KnobDirective implements OnChanges {
 
     this.setCurrentAngle((this.maxAngle - this.minAngle) * .5 + this.minAngle);
   }
+
+  /** updates the current angle and derrived settings. */
   private setCurrentAngle(angle: number) {
     if (angle !== this.currentAngle) {
       this.currentAngle = angle;
@@ -160,11 +150,10 @@ export class KnobDirective implements OnChanges {
     }
   }
 
-  private updateClientTouch(pt: Point2d) {
+  private pointToAngle(pt: Point2d) {
     const rect = (this.el.nativeElement as Element).getBoundingClientRect();
     const pos = getNormalizedPosition(pt, rect);
-    const angle = getAngle([.5, .5], pos);
-    this.onAngleChange(angle);
+    return getAngle([.5, .5], pos);
   }
 
   private updateTransform() {

@@ -10,6 +10,7 @@ import { InstrumentTesterComponent } from './instrument-tester/instrument-tester
 import { RadarComponent } from './surfaces/radar/radar.component';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { KnobDirective } from './surfaces/knob.directive';
+import { PressEventsDirective } from './surfaces/press-events/press-events.directive';
 
 @NgModule({
   declarations: [
@@ -19,7 +20,8 @@ import { KnobDirective } from './surfaces/knob.directive';
     KeyboardComponent,
     InstrumentTesterComponent,
     RadarComponent,
-    KnobDirective
+    KnobDirective,
+    PressEventsDirective
   ],
   imports: [
     BrowserModule,

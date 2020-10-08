@@ -4,6 +4,7 @@ import { Subject } from 'rxjs';
 import { bufferTime, filter, takeUntil, tap } from 'rxjs/operators';
 import { cancelEvent } from '../common';
 import { getNormalizedPosition, isPointInRect, Point2d, Rect } from '../geometry';
+import { PressEventsChange } from '../press-events/models';
 import { TriggerState } from '../trigger-state';
 
 interface InternalTouchState {
@@ -19,12 +20,9 @@ interface InternalTouchState {
   styleUrls: ['./radar.component.scss']
 })
 export class RadarComponent implements OnInit, OnDestroy {
-  /** Id for mouse triggers. */
-  private static readonly mouseId = -1;
 
   private destroyedSubject = new Subject();
   private downTouches = new Map<number, Point2d>();
-  private isMouseDown = false;
 
   private readonly touchEventSubject = new Subject<InternalTouchState>();
   readonly gridStops = range(0, 20).map(x => 50 + x * 50);
@@ -76,41 +74,21 @@ export class RadarComponent implements OnInit, OnDestroy {
     this.destroyedSubject.next();
   }
 
-  mouseDown(evt: MouseEvent) {
-    this.isMouseDown = true;
-    this.updateTouchPos(RadarComponent.mouseId, [evt.clientX, evt.clientY]);
-  }
-
-  @HostListener('window:mouseup')
-  mouseUp() {
-    if (this.isMouseDown) {
-      this.isMouseDown = false;
-      this.touchEventSubject.next({ id: RadarComponent.mouseId });
-    }
-  }
-
-  mouseMove(evt: MouseEvent) {
-    if (this.isMouseDown) {
-      this.updateTouchPos(RadarComponent.mouseId, [evt.clientX, evt.clientY]);
-    }
-  }
-
-  touchStart(evt: TouchEvent) {
+  pressChange(evt: PressEventsChange) {
     const rect = this.getSurfaceRect();
-    Array.from(evt.changedTouches).forEach(x => this.updateTouchPos(x.identifier, [x.clientX, x.clientY], rect));
-    cancelEvent(evt);
+    evt.changes.forEach(x => {
+      switch (x.type) {
+        case 'press':
+        case 'move':
+          this.updateTouchPos(x.id, [x.clientX, x.clientY], rect);
+          break;
+        case 'release':
+          this.touchEventSubject.next({ id: x.id });
+          break;
+      }
+    });
   }
 
-  touchEnd(evt: TouchEvent) {
-    Array.from(evt.changedTouches).forEach(x => this.touchEventSubject.next({ id: x.identifier }));
-    cancelEvent(evt);
-  }
-
-  touchMove(evt: TouchEvent) {
-    const rect = this.getSurfaceRect();
-    Array.from(evt.changedTouches).forEach(x => this.updateTouchPos(x.identifier, [x.clientX, x.clientY], rect));
-    cancelEvent(evt);
-  }
 
   private calculateFrequency([x]: Point2d) {
     return Math.abs(x) * (this.maxFreq - this.minFreq) + this.minFreq;

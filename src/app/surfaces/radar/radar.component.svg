@@ -1,6 +1,5 @@
 <svg viewBox="0 0 1200 1000" xmlns="http://www.w3.org/2000/svg"
-(touchstart)="touchStart($event)" (touchend)="touchEnd($event)" (touchmove)="touchMove($event)"
-(touchcancel)="touchEnd($event)">
+  [appPressEvents]="'touch'" (pressEventsChange)="pressChange($event)">
   <defs>
     <mask id="mask1" height="1000" width="1000" y="0" x="0">
       <rect rx="32" height="900" width="900" y="50" x="50" style="stroke:none; fill: #fff" />
@@ -70,7 +69,7 @@
     <g >
       <rect style="fill:url(#box)" height="1000" width="1200" filter="url(#inner-glow)" />
     </g>
-    <g #surfaceElem (mousedown)="mouseDown($event)" (mousemove)="mouseMove($event)">
+    <g #surfaceElem [appPressEvents]="'mouse'" (pressEventsChange)="pressChange($event)">
       <rect height="900" width="900" x="50" y="50" rx="32" ry="32" stroke="#666" stroke-width="4"
       fill="url(#screen)" fill-opacity="80%"
         filter="url(#inset-shadow)" />

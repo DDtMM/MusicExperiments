@@ -31,20 +31,19 @@ export class ControlSurfaceComponent implements OnInit {
   main$ = combineLatest([
     this.startToneSubj.pipe(
       tap(() => {
-        console.log('starting tone');
         Tone.start();
         if (!this.allGenerators.length) {
           this.initGenerators();
         }
         this.allGenerators.forEach(x => x.start());
         //Tone.Destination.volume.value = 0;
-      }), 
+      }),
       startWith()
     ),
     this.stopToneSubj.pipe(
       tap(() => {
         this.allGenerators.forEach(x => x.stop());
-      }), 
+      }),
       startWith()
     )
   ])
@@ -75,10 +74,9 @@ export class ControlSurfaceComponent implements OnInit {
       modulationIndex: 3
     }).connect(this.outputNode);
     this.allGenerators = [fmOsc];
-    console.log('generators initted'); 
     this.userParams = [
       this.createUserParam('Inst Vol', -64, 0, () => fmOsc.volume.value, (val) => fmOsc.volume.value = val),
-      this.createUserParam('Inst Freq', 1, 14000, () => fmOsc.frequency.value as number, 
+      this.createUserParam('Inst Freq', 1, 14000, () => fmOsc.frequency.value as number,
         (val) => fmOsc.set({ frequency: correctPitch(val, .9) })),
       this.createUserParam('Mod INdex', 0, 10, () => fmOsc.modulationIndex.value, (val) => fmOsc.modulationIndex.value = val),
       this.createUserParam('Harmonicity', 0, 4, () => fmOsc.harmonicity.value, (val) => fmOsc.harmonicity.value = val),
